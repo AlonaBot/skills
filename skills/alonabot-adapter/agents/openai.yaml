@@ -1,0 +1,7 @@
+# Codex 技能界面信息；技能本体与触发条件见上一级目录的 SKILL.md。
+interface:
+  display_name: "AlonaBot Adapter 开发"
+  short_description: "为 AlonaBot 接入新的聊天平台：实例、事件交付、游标与能力声明。"
+  default_prompt: "使用 $alonabot-adapter 完成这次 AlonaBot 开发任务。"
+policy:
+  allow_implicit_invocation: true

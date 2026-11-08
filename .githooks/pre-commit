@@ -1,0 +1,6 @@
+#!/bin/sh
+# 提交前把有改动的技能日期改为今天、版本改为 VERSION，再校验全部技能。
+# 启用：git config core.hooksPath .githooks
+set -e
+go run ./tools/skillcheck stamp --staged
+go run ./tools/skillcheck check

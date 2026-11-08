@@ -1,0 +1,23 @@
+{
+  "name": "alonabot-skills",
+  "owner": {
+    "name": "AlonaBot"
+  },
+  "metadata": {
+    "description": "Agent skills for developing plugins and adapters with AlonaBot",
+    "version": "0.1-beta"
+  },
+  "plugins": [
+    {
+      "name": "alonabot-dev",
+      "description": "Write AlonaBot plugins and adapters and debug the wire protocol",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/alonabot-plugin",
+        "./skills/alonabot-adapter",
+        "./skills/alonabot-wire-protocol"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# Codex 技能界面信息；技能本体与触发条件见上一级目录的 SKILL.md。
+interface:
+  display_name: "AlonaBot 协议排查"
+  short_description: "把会话失败、错误码与超时对应到 Wire 协议阶段并找出原因。"
+  default_prompt: "使用 $alonabot-wire-protocol 完成这次 AlonaBot 开发任务。"
+policy:
+  allow_implicit_invocation: true
