@@ -68,20 +68,22 @@ metadata:
 
 ## 版本与日期
 
-- **版本对应。** `VERSION` 是唯一来源，表示这批技能针对的 AlonaBot 版本。每个技能的 `metadata.alonabot-version`、可见行和 `.claude-plugin/marketplace.json` 的 `metadata.version` 都必须与它一致。AlonaBot 发布新版本时：改 `VERSION` 与 marketplace 版本 → 按新版本核对并修改技能内容 → `go run ./tools/skillcheck stamp --all` → 在 [CHANGELOG](CHANGELOG.md) 记录 → 打 tag `v<VERSION>`。
+- **版本对应。** `VERSION` 是唯一来源，表示这批技能针对的 AlonaBot 版本。每个技能的 `metadata.alonabot-version`、可见行和 `.claude-plugin/marketplace.json` 的 `metadata.version` 都必须与它一致。AlonaBot 发布新版本时：改 `VERSION` 与 marketplace 版本 → 按新版本核对并修改技能内容 → `sh scripts/skills.sh stamp --all` → 在 [CHANGELOG](CHANGELOG.md) 记录 → 打 tag `v<VERSION>`。
 - **日期自动更新。** 启用提交钩子后，每次提交会把有改动的技能的 `metadata.updated` 和全部可见行改成当天日期：
 
   ```sh
   git config core.hooksPath .githooks
   ```
 
-  没有钩子时手动运行 `go run ./tools/skillcheck stamp <技能名>`。CI 运行 `check --git`，技能被改动而日期早于该次提交时失败，所以日期不会悄悄过期。
+  没有钩子时手动运行 `sh scripts/skills.sh stamp <技能名>`。CI 运行 `check --git`，技能被改动而日期早于该次提交时失败，所以日期不会悄悄过期。
 
 ## 检查
 
+脚本只用 POSIX sh、awk、grep 与 git，不需要安装 Go、Node、Python 或任何编译工具；Windows 上在 Git Bash 中运行。
+
 ```sh
-go run ./tools/skillcheck check        # frontmatter、命名、描述长度、版本、可见行、链接、openai.yaml、marketplace
-go run ./tools/skillcheck check --git  # 另核对更新日期不早于最后一次修改该技能的提交
+sh scripts/skills.sh check        # frontmatter、命名、描述长度、版本、可见行、链接、openai.yaml、marketplace、README 表
+sh scripts/skills.sh check --git  # 另核对更新日期不早于最后一次修改该技能的提交
 ```
 
 维护本仓库的约定见 [AGENTS.md](AGENTS.md)。

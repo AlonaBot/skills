@@ -4,6 +4,10 @@
 
 ## 0.1-beta
 
+### 2026-11-09
+
+- 去掉对 Go 的依赖：检查与日期工具改为 `scripts/skills.sh`（POSIX sh + awk），删除 `go.mod` 与 `tools/skillcheck`。
+
 ### 2026-11-08
 
 - 初始版本：`alonabot-plugin`、`alonabot-adapter`、`alonabot-wire-protocol` 三个技能。

@@ -1,4 +1,4 @@
-# 校验技能格式、版本与更新日期。
+# 校验技能格式、版本与更新日期；只用 runner 自带的 sh、awk、grep 与 git。
 name: check
 
 on:
@@ -16,8 +16,4 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - run: go vet ./...
-      - run: go run ./tools/skillcheck check --git
+      - run: sh scripts/skills.sh check --git
