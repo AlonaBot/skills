@@ -87,3 +87,7 @@ sh scripts/skills.sh check --git  # 另核对更新日期不早于最后一次�
 ```
 
 维护本仓库的约定见 [AGENTS.md](AGENTS.md)。
+
+## 许可证
+
+采用 [MIT 许可证](LICENSE)。
