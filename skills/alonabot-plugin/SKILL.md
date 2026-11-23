@@ -1,97 +1,82 @@
 ---
 name: alonabot-plugin
-description: 使用 AlonaBot Go SDK 编写、修改或排查 Native Go 插件时使用，包括链式注册命令、文本匹配、事件、Service、Event Bus 订阅与 HTTP 路由，编写 plugin.yaml 与 config_schema.json，读取配置与 secret，使用受管 SQLite，以及运行 alonabot plugin generate、plugin check 与 alonabot run。Use when building an AlonaBot plugin with the sdk package. 编写平台 Adapter 时改用 alonabot-adapter；修改 AlonaBot 框架本身时使用 AlonaBot 仓库内的维护技能。
-compatibility: AlonaBot 0.1-beta；Go 1.27+；需要能读取 github.com/AlonaBot/AlonaBot 源码。
+description: 使用 AlonaBot v0.3.0 Go SDK 编写或修改功能插件、Agent 扩展时使用，涵盖命令、消息、Service、任务、配置、存储、测试与打包。平台接入使用 alonabot-adapter。
+compatibility: AlonaBot 0.3.0；Go 1.27.1+；可读取 AlonaBot 源码或 Go module 缓存。
 metadata:
-  alonabot-version: "0.1-beta"
-  updated: "2026-11-08"
+  alonabot-version: "0.3.0"
+  updated: "2026-11-23"
 ---
 
-# 编写 AlonaBot 插件
+# 开发 AlonaBot 插件
 
-> AlonaBot 0.1-beta · 最后更新 2026-11-08
+> AlonaBot 0.3.0 · 最后更新 2026-11-23
 
-插件是独立的 Native Go 进程，只经 `github.com/AlonaBot/AlonaBot/sdk` 与 Core 通信。本技能给出 0.1-beta 的写法与边界；行为的权威是 AlonaBot 仓库的 `spec/CONTRACTS-v0.1.md`，插件作者规则是 `docs/plugin-guide.md`，两者与本技能冲突时以仓库为准，并提醒用户更新本技能。
+先读取工程 `go.mod` 的 SDK 版本与 replace 路径，再按需求查看 SDK 源码、`docs/plugin-guide.zh-CN.md` 和 `examples/plugins/`。本技能按 AlonaBot main 的 v0.3.0 代码核对；实际签名以工程使用的 SDK 为准。
 
-## 先确认版本与现状
+## 创建与运行
 
-1. 读取插件工程 `go.mod` 中 `github.com/AlonaBot/AlonaBot` 的版本或 replace 路径；不是 0.1-beta 时告诉用户本技能可能过期。
-2. 能访问 AlonaBot 源码时，以 `sdk/` 的导出 API、`examples/plugins/` 与 `ARCHITECTURE.md` 的「状态」列为准，不凭记忆补 API。
-3. 0.1-beta 仍在实施：定时任务（`Schedules`）会让 `Run` 返回 UNSUPPORTED，`plugintest` 测试套件、`alonabot build`/`pack`/`install` 尚未提供，私有 HTTP 路由一律 401。用户需要这些能力时如实说明，不写假实现。
-
-## 工程结构
-
-```text
-myplugin/
-├── go.mod                # 自己管理依赖，与 Core 和其他插件互不影响
-├── main.go               # 根插件与 main
-├── plugin.yaml           # 作者信息：id、name、version、source（必填）
-├── config_schema.json    # 可选，配置声明
-├── i18n/en-US.json       # 用户可见文案，至少 en-US
-└── alonabot_gen.go       # 由 alonabot plugin generate 生成，不手改
+```fish
+alonabot init ./alonabot-plugin-hello
+alonabot check ./alonabot-plugin-hello
+alonabot run ./alonabot-plugin-hello --data-dir ./data
 ```
 
-`plugin.yaml` 只写作者信息：必填 `id`、`name`、SemVer `version`、`source`，可选 `description`、`author`、`role`、`icon`、`adapter_dependencies`、`plugin_dependencies`，写框架外数据时加 `prepare_effects: external`。`manifest_version`、`entrypoint`、`os/arch`、`migration_mode`、协议版本等由构建补上，作者写了 `plugin check` 会报错。ID 规则与市场前缀 `alonabot_plugin_` 见 [references/sdk-api.md](references/sdk-api.md#manifest-与-id)。
+在终端输入 `/hello` 检查回复。带开发目录时默认热重载；`--reload=false` 关闭，`--stdio` 切换独立进程传输。独立 module 按 CLI 提示选择可访问的 SDK 版本；源码开发版可使用本地 replace。
 
-## 根插件
-
-根类型以值嵌入 `sdk.Base`，只覆盖用到的 Hook，`main` 调用 `sdk.Run`：
+包级入口导出 `New() *sdk.Plugin`，每次调用创建独立状态。在 `sdk.NewPlugin()` 返回的对象上注册行为：
 
 ```go
-type demo struct{ sdk.Base }
+package main
 
-func (p *demo) Commands(r *sdk.CommandRegistry) {
-	r.Command("hello").Handle(p.hello)
-}
+import (
+    "log/slog"
+    "os"
 
-func (p *demo) hello(c *sdk.Context) (message.Chain, error) {
-	return message.Chain{message.Text("hello")}, nil
+    "github.com/AlonaBot/AlonaBot/sdk"
+)
+
+// New 创建问候插件并登记命令。
+func New() *sdk.Plugin {
+    p := sdk.NewPlugin()
+    p.Command("hello").Menu().Handle(func(c *sdk.Context) error {
+        return c.Reply(c.T("hello"))
+    })
+    return p
 }
 
 func main() {
-	if err := sdk.Run(&demo{}); err != nil {
-		slog.Error("demo plugin stopped with an error", "error", err)
-		os.Exit(1)
-	}
+    if err := sdk.Run(New()); err != nil {
+        slog.Error("hello plugin stopped", "error", err)
+        os.Exit(1)
+    }
 }
 ```
 
-- 生命周期：`OnConfigLoad`（纯配置变换）→ `OnStart`（打开资源，不能发起 Send、Service 或 Publish）→ `OnReady`（激活后执行）→ 业务 → `OnStop`（在期限内关闭资源，结束后台 goroutine）。
-- 注册方法 `Commands`、`Events`、`Services`、`Subscriptions`、`HTTP` 各在 Collect 时调用一次。每条链必须以 `Handle` 结束；漏写、重复调用或在 `Handle` 之后继续调用都会让 Collect 报错。
-- 两种 Handler：返回 `error` 的手动型，用 `c.Send` 发送；返回 `(message.Chain, error)` 的自动回复型，非空 Chain 由 Core 在 Handler 返回后、本次显式发送之后发送一次。
+配套 `i18n/en-US.json`：`{"messages":{"hello":"Hello AlonaBot"}}`。`plugin.yaml` 声明身份，配置放 `plugin_config_schema.json`。构建工具扫描资源并经 overlay 编入程序，直接使用 `alonabot build/check/run/pack`；工程无需生成文件或生成命令。
 
-各注册入口、Handler 参数绑定、权限与发送的签名见 [references/sdk-api.md](references/sdk-api.md)。
+## 按任务读取
 
-## 必须遵守的规则
+- 注册、参数绑定、消息、Service、Bus、任务、Agent 扩展：读 [SDK 用法](references/sdk-api.md)。
+- 配置、secret、配置文件覆盖、KV、SQLite、插件文件：读 [配置与存储](references/config-and-storage.md)。
 
-- **stdout 是协议通道。** 不往 stdout 打印；用 `log/slog` 或 `c.Logger()`，SDK 把记录交给 Core。
-- **文案分层。** 日志、错误字符串与 safe_message 用英文；给用户看的文字放 `i18n/<locale>.json` 的 `messages`，至少 en-US。
-- **不泄露 secret。** 不记录 token、完整配置与 DSN；secret 只在 `config_schema.json` 中以 `"secret": true` 声明，不写进日志、错误和业务数据库。
-- **依赖从简。** 只导入用到的包，能用标准库就不用第三方库；包级变量与 `init` 不做重活。需要模型能力时调用 Agent 的 `llm.generate`（`sdk/llm`），不内嵌模型厂商 SDK。
-- **副作用不自动重试。** 超时与取消不代表对端没执行。普通请求期限是 30s。
-- **跨插件只走 Service 与 Event Bus。** 不读写其他插件的文件或数据库。Event Bus 是非持久广播，需要回执时用 Service Call。
-- **JSON 泛型的类型参数**（`sdk.JSON`、`sdk.Subscribe`、`sdk.CallJSON`、`sdk.Publish`）必须是包级具名非泛型类型；改动后重新运行 `alonabot plugin generate`。
+## 生命周期与调用
 
-## 配置与存储
+- 用 `p.OnConfigLoad(fn)` 登记纯配置变换；`p.OnStart(fn)` 打开资源，`p.OnReady(fn)` 完成激活前准备，`p.OnStop(fn)` 关闭资源并结束后台 goroutine。生命周期回调响应 ctx；业务调用从 ACTIVATED 后开始。
+- `New()` 可被重复调用；状态放在本次创建的对象或闭包中。用 `p.Sub(id)` 划分一层逻辑模块，生命周期和迁移登记在根插件上。
+- Handler 的 `c` 实现 `context.Context`，直接传给 SDK 分类包以保留期限、取消与父调用。后台工作使用所属生命周期的 context。
+- 普通请求期限 30s。较长交互使用 `.Continue().Handle(...)` 或 `c.Continue(fn)`；在延续中用 `c.Wait(timeout)` 等待同一用户、会话和话题的下一条消息。延续随插件停止结束。
+- 发送结果与错误可能同时存在，保留已确认消息句柄。有副作用的业务调用由调用者处理结果，避免自动重试导致重复执行。
+- stdout 用于 stdio 协议，日志用 `log/slog` 或 `c.Logger()`；日志与错误用英文，用户文案用 i18n。secret 留在配置中，日志与业务数据省略凭证明文。
 
-- 配置写在 `plugin.yaml` 同目录的 `config_schema.json`，从 `OnStart` 起用 `p.Config().String("key")` 等方法读取；在 `OnConfigLoad` 中或更早调用会 panic。声明格式、迁移与取值方法见 [references/config-and-storage.md](references/config-and-storage.md)。
-- 业务数据放受管 SQLite：没有特别需要时用 `sqlitedb.Open(ctx)`（比 GORM 少约 1.5 MiB 常驻内存），需要 ORM 时用 `gormdb.Open(ctx)`。迁移实现 `Migrate` 或 `Migrations` 二者之一，已发布的迁移 ID 不改含义。
+## 验证与打包
 
-## 生成、检查与本地运行
-
-```sh
-alonabot plugin generate --dir ./myplugin   # 生成 alonabot_gen.go，内容不变时不改文件
-alonabot plugin check --dir ./myplugin --goos linux --goarch amd64
-go build -o bin/myplugin ./myplugin
-alonabot run --data-dir ./data --plugin-id myplugin --entry bin/myplugin          # TCP loopback
-alonabot run --data-dir ./data --plugin-id myplugin --entry bin/myplugin --stdio  # stdio
+```fish
+alonabot check .
+go test ./...
+alonabot test .
+alonabot pack . --target linux/amd64 --target linux/arm64
 ```
 
-没有安装好的 `alonabot` 时，在 AlonaBot 源码目录用 `go build -o bin/alonabot ./cmd/alonabot` 构建。诊断以 `文件:行:列: 说明` 输出，退出码 1。会话失败、握手或帧错误按 [alonabot-wire-protocol](../alonabot-wire-protocol/SKILL.md) 排查。
+`go test` 中用 `plugintest.Start(t, plugintest.Plugin(New()))` 启动真实 Core 与测试 Adapter，以 `h.Text(...)` 注入消息并用 `RequireReply` 检查行为，参考 `examples/plugins/echo/main_test.go`。`alonabot test` 验证离线握手、准备、注册、激活与停止；真实平台联调另需账号与目标会话。
 
-## 完成前检查
-
-- `go vet ./...` 与 `go build ./...` 通过，`alonabot plugin check` 不报过期或诊断。
-- 每条注册链以 `Handle` 结束，权限按需显式设置（命令缺省要求 `user`）。
-- 没有 stdout 输出、secret 明文、自动重试或未声明的用户可见中文/英文硬编码文案。
-- 告诉用户实际运行了哪些命令；`alonabot run` 没有真实平台账号时，不把它说成真实平台验证。
+`check/build/test/pack` 使用位置目录；`build/check` 的平台参数为 `--goos`、`--goarch`，`pack` 使用可重复的 `--target os/arch`。归档默认输出到工程 `bin/`。交付时列出改动与实际验证结果。

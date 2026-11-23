@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Agent skills for developing plugins and adapters with AlonaBot",
-    "version": "0.1-beta"
+    "version": "0.3.0"
   },
   "plugins": [
     {

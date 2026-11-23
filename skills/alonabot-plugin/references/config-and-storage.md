@@ -1,60 +1,53 @@
-# 配置、secret 与受管 SQLite
+# 配置与存储
 
-> AlonaBot 0.1-beta · 最后更新 2026-11-08
+> AlonaBot 0.3.0 · 最后更新 2026-11-23
 
-权威条款：AlonaBot `spec/CONTRACTS-v0.1.md` §5（配置）、§6（数据库）。
+## 配置
 
-## config_schema.json
-
-写在 `plugin.yaml` 同目录，按字段键声明类型与英文源文案：
+插件与 Agent 使用 `plugin_config_schema.json`，Adapter 使用 `adapter_config_schema.json`，与 `plugin.yaml` 同目录：
 
 ```json
 {
-  "$version": 2,
-  "$migrations": [{"to": 2, "rename": {"hello": "greeting"}}],
-  "greeting": {"type": "string", "description": "Greeting", "default": "Hello"},
+  "greeting": {"type": "string", "description": "Greeting", "default": "Hello", "profile": true},
   "enabled": {"type": "bool", "default": true},
   "token": {"type": "string", "description": "Access token", "secret": true}
 }
 ```
 
-- `$version` 缺省为 1。SDK 从已保存的版本依次执行 `$migrations`，首装跳过；每步按 `rename` → `map` → `wrap` → `remove` 执行，路径不存在时跳过，rename 目标已存在时失败。
-- 声明式迁移后调用根插件的 `OnConfigLoad(ctx, fromVersion, raw)`：保留未知键、响应 ctx、只做可重复的纯配置变换；`sdk.Base` 默认原样返回。普通 restart 与恢复时改变配置会返回 FAILED_PRECONDITION。
-- 之后 SDK 只给缺失键补 `default` 或类型零值，再校验。显式 `false`、`0`、空串与空集合保持原样。
-- 改动后运行 `alonabot plugin generate`，规范 JSON 嵌入 `alonabot_gen.go`。
+配置按字段声明，无版本号与迁移列表。需要改名搬移旧值时，用 `p.OnConfigLoad(func(ctx context.Context, raw json.RawMessage) (json.RawMessage, error))` 做可重复的纯变换，保留未知键。SDK 随后补值、无损转换和校正，required 仍缺失时准备失败；普通 restart 要求完整结果与原快照一致。
 
-## 读取配置
+从 OnStart 开始读取 `p.Config()`；Handler 用 `c.Config()` 取得本次调用冻结的会话配置视图。`p.Sub(id).Config()` 读取 Schema 中同名 object 的基础配置。getter 与声明类型一致：
 
-从 `OnStart` 起用 `p.Config()` 取得 `config.Values`，同一 Session 内不变，可并发读取：
-
-| 声明类型 | 取值方法 |
+| 类型 | 方法 |
 | --- | --- |
-| `string`、`text` | `String(key)` |
-| `int`、`float`、`bool` | `Int(key)`（int64）、`Float(key)`（float64）、`Bool(key)` |
-| 没有 `items` 的 `list` | `Strings(key)` |
-| `object`、有 `items` 的 `list` | `Object(key)`、`Objects(key)` |
-| `dict` | `Dict(key)`，返回 `map[string]json.RawMessage` |
-| `template`、`template_list` | `Template(key)`、`TemplateList(key)`，`Key()` 取选中的模板键 |
+| string/text | `String(key)` |
+| int/float/bool | `Int(key)`（int64）、`Float(key)`（float64）、`Bool(key)` |
+| 无 items 的 list | `Strings(key)` |
+| object / 对象 list | `Object(key)` / `Objects(key)` |
+| dict | `Dict(key)`，值为 `json.RawMessage` |
+| template/template_list | `Template(key)` / `TemplateList(key)`，`Key()` 取得选中模板 |
 
-读取未声明键或类型不符的方法会 panic。
+`profile: true` 允许会话配置文件覆盖字段。优先标记 Handler 使用的叶字段；启动连接、token 与后台缓存取基础配置。复合覆盖字段的整棵子树须无 secret。读取未声明键或类型不匹配的方法会 panic。
 
-## secret
+secret 仅用于 string/text，省略 default 与 options。Config 返回明文，空串表示未设置；业务数据、日志与错误省略凭证。配置翻译放 `i18n/<locale>.json` 的 `config`，用户回复放 `messages`，至少提供 en-US；`c.T(key, name, value, ...)` 取回复文案。命令英文说明写 `.Description(...)`，其他语言通过顶层 `commands` 按完整命令路径覆盖。
 
-只用于 `string` 与 `text`：声明 `"secret": true`，同时省略 `default` 与 `options`。`Config()` 取到明文；空串表示未设置。明文不进日志、错误与业务数据库。
+运行时选项源、模板、配置示例图片按需读取主仓库 `docs/plugin-guide.zh-CN.md`「配置与 secret」。修改后运行 `alonabot check`，构建工具自动嵌入资源。
 
-## 翻译
+## KV 与 SQLite
 
-`i18n/<locale>.json` 的 `config` 根节点按字段层级覆盖 `description`、`hint`、`labels`，子字段放在 `items`，模板放在 `templates`；用户可见回复放在 `messages`；`metadata` 翻译 manifest 的 `name` 与 `description`。
+简单状态使用 `sdk/kv`：
 
-```json
-{"config": {"greeting": {"description": "问候语"}}, "messages": {"hello": "你好"}}
+```go
+err := kv.Set(c, "subscription/topic", []byte(topic))
+value, ok, err := kv.Get(c, "subscription/topic")
 ```
 
-## 受管 SQLite
+`Get` 的 ok 表示键存在；`Delete` 删除，`List` 按前缀分页。KV 存入受管 SQLite，与业务数据一起按代次复制和回退。
 
-- `sqlitedb.Open(ctx)` 返回 `*sql.DB`；`gormdb.Open(ctx)` 返回 `*gorm.DB`，两者共用同一个连接。不导入就不链接，`sqlitedb` 少约 1.5 MiB 常驻内存。
-- 迁移二选一，实现在根插件上：
-  - `Migrate(ctx, db *sql.DB) error`：自管版本，须可重复执行。
-  - `Migrations() []sqlitedb.Migration`：`ID` 非零、唯一、严格递增，`Up` 必须使用传入的 `tx`；发布后的 ID 不能改成另一项操作。
-- reload 与 update 在独立候选副本上准备，失败回到旧数据；框架外文件与外部数据库不在这个保证内，写外部数据时在 `plugin.yaml` 声明 `prepare_effects: external`。
-- 大数据放磁盘，内存缓存必须有上限。Core 托管的 KV 尚未提供，简单状态也用 `sqlitedb`。
+需要 SQL 时使用 `sqlitedb.Open(ctx)`，需要 ORM 时使用 `gormdb.Open(ctx)`，两者共享受管连接。迁移在 New 中二选一登记：`sqlitedb.Migrate(p, fn)` 或 `sqlitedb.Migrations(p, list)`；GORM 使用对应包入口。版本化 Migration 的 ID 非零、唯一且递增，Up 使用传入事务，已发布 ID 保持原含义。
+
+reload/update 使用独立候选数据库，准备失败保留旧数据；同代次 RESUME 复用数据库并跳过迁移回调。框架外数据库由插件管理，准备期间写外部数据时声明 `prepare_effects: external`。
+
+## 插件文件
+
+在就绪的 Handler 中通过 `sdk.PluginDataDir(c)` 取得插件数据目录，跨 restart 保留；更新回退保持文件现状。需要随代次回退的数据放 KV 或受管 SQLite。OnStart、OnReady 或停止后调用 PluginDataDir 会 panic，文件工作放在就绪之后执行。
