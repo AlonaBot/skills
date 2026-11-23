@@ -16,7 +16,7 @@ set -eu
 SKILLS_DIR=skills
 VERSION_FILE=VERSION
 MARKET_FILE=.claude-plugin/marketplace.json
-README_FILE=README.md
+README_FILES="README.md README.zh-CN.md"
 MAX_BODY_LINES=500
 ALLOWED_KEYS=" name description license compatibility metadata allowed-tools "
 
@@ -209,15 +209,17 @@ check_marketplace() {
 
 # check_readme 核对 README 技能表列出全部技能，且日期与各自的 metadata.updated 一致。
 check_readme() {
-	for name in $(list_skills); do
-		row=$(grep -F "| [$name]($SKILLS_DIR/$name/SKILL.md) |" "$README_FILE" || true)
-		if [ -z "$row" ]; then
-			fail "$README_FILE: skills table has no row for $name"
-			continue
-		fi
-		got=$(printf '%s\n' "$row" | sed -n 's/.*| \([0-9-]*\) |$/\1/p')
-		want=$(unquote "$(meta_value "$(frontmatter "$SKILLS_DIR/$name/SKILL.md" || true)" updated)")
-		[ "$got" = "$want" ] || fail "$README_FILE: $name row says \"$got\" but metadata.updated is $want; run: sh scripts/skills.sh stamp $name"
+	for readme in $README_FILES; do
+		for name in $(list_skills); do
+			row=$(grep -F "| [$name]($SKILLS_DIR/$name/SKILL.md) |" "$readme" || true)
+			if [ -z "$row" ]; then
+				fail "$readme: skills table has no row for $name"
+				continue
+			fi
+			got=$(printf '%s\n' "$row" | sed -n 's/.*| \([0-9-]*\) |$/\1/p')
+			want=$(unquote "$(meta_value "$(frontmatter "$SKILLS_DIR/$name/SKILL.md" || true)" updated)")
+			[ "$got" = "$want" ] || fail "$readme: $name row says \"$got\" but metadata.updated is $want; run: sh scripts/skills.sh stamp $name"
+		done
 	done
 	return 0
 }
@@ -276,14 +278,16 @@ stamp_skill() {
 
 # stamp_readme 把 README 技能表中这些技能的日期改为今天。
 stamp_readme() {
-	tmp=$README_FILE.stamp.tmp
-	awk -v d="$today" -v names=" $* " '
-		/^\| \[[a-z0-9-]+\]\(skills\/[a-z0-9-]+\/SKILL\.md\) \|.*\| [0-9-]+ \|$/ {
-			n = $0; sub(/^\| \[/, "", n); sub(/\].*/, "", n)
-			if (index(names, " " n " ")) { sub(/\| [0-9-]+ \|$/, "| " d " |") }
-		}
-		{ print }' "$README_FILE" >"$tmp"
-	write_if_changed "$README_FILE" "$tmp"
+	for readme in $README_FILES; do
+		tmp=$readme.stamp.tmp
+		awk -v d="$today" -v names=" $* " '
+			/^\| \[[a-z0-9-]+\]\(skills\/[a-z0-9-]+\/SKILL\.md\) \|.*\| [0-9-]+ \|$/ {
+				n = $0; sub(/^\| \[/, "", n); sub(/\].*/, "", n)
+				if (index(names, " " n " ")) { sub(/\| [0-9-]+ \|$/, "| " d " |") }
+			}
+			{ print }' "$readme" >"$tmp"
+		write_if_changed "$readme" "$tmp"
+	done
 }
 
 # staged_skills 输出暂存区中有改动的技能名。
@@ -305,8 +309,10 @@ run_stamp() {
 			dirty=$(git diff --name-only -- "$SKILLS_DIR/$name")
 			[ -z "$dirty" ] || die "$SKILLS_DIR/$name has unstaged changes; stage them first, or run: sh scripts/skills.sh stamp $name"
 		done
-		[ -z "$(git diff --name-only -- "$README_FILE")" ] ||
-			die "$README_FILE has unstaged changes; stage them first so the skills table can be re-staged"
+		for readme in $README_FILES; do
+			[ -z "$(git diff --name-only -- "$readme")" ] ||
+				die "$readme has unstaged changes; stage them first so the skills table can be re-staged"
+		done
 		;;
 	--all) names=$(list_skills) ;;
 	"") die "name the skills to stamp, or use --all or --staged" ;;
