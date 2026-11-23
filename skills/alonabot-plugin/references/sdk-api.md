@@ -1,87 +1,70 @@
-# AlonaBot SDK 0.1-beta 速查
+# SDK 用法
 
-> AlonaBot 0.1-beta · 最后更新 2026-11-08
+> AlonaBot 0.3.0 · 最后更新 2026-11-23
 
-摘自 `github.com/AlonaBot/AlonaBot/sdk` 的导出 API。签名以源码为准；这里与源码不一致时按源码写代码，并提醒用户更新本技能。
+## 注册与参数
 
-## 目录
-
-- [注册入口](#注册入口)
-- [Handler 与参数绑定](#handler-与参数绑定)
-- [权限](#权限)
-- [发送](#发送)
-- [Service 与 Event Bus](#service-与-event-bus)
-- [HTTP](#http)
-- [媒体与 Agent 会话](#媒体与-agent-会话)
-- [Manifest 与 ID](#manifest-与-id)
-
-## 注册入口
-
-| 根插件方法 | 注册器 | 常用链 |
-| --- | --- | --- |
-| `Commands(r *sdk.CommandRegistry)` | 命令与文本匹配 | `r.Group("demo")`、`r.Command("a", "b")`、`r.Regex(id, expr)`、`r.Keyword(id, ...)`、`r.StartsWith(id, ...)`、`r.EndsWith(id, ...)`、`r.FullMatch(id, ...)`、`r.Raw(id)` |
-| `Events(r *sdk.EventRegistry)` | 事件路由 | `r.On(routeID, "message.created").Priority(n).Permission(p).Handle(h)` |
-| `Services(r *sdk.ServiceRegistry)` | 类型化 Service | `sdk.JSON[In, Out](r, name).Access(...).Tool(...).Handle(h)` |
-| `Subscriptions(r *sdk.SubscriptionRegistry)` | Event Bus 订阅 | `sdk.Subscribe[T](r, routeID, eventName).Handle(func(*sdk.Context, T) error)` |
-| `HTTP(r *sdk.HTTPRegistry)` | HTTP 路由 | `r.Handle(method, path, handler, opts...)` |
-| `Schedules(r *sdk.ScheduleRegistry)` | 定时任务 | 0.1-beta 尚不支持，注册后 `Run` 返回 UNSUPPORTED |
-
-`CommandBuilder` 的选项：`Alias(path...)`、`Args(names...)`、`Optional(name, def...)`、`RawTail()`、`UsageKey(key)`、`Silent()`、`IgnoreCase()`、`Priority(p)`、`Permission(p)`，最后 `Handle(handler)`。`Group` 返回子注册器，也可以 `Permission`。
-
-命令按最长完整路径与别名优先匹配；命令前缀由实例配置决定，不写在路径里。Handler 里用 `c.Match()` 取文本匹配的分组。
-
-## Handler 与参数绑定
-
-命令与文本匹配的 Handler 第一个参数必须是 `*sdk.Context`，返回 `error`（手动型）或 `(message.Chain, error)`（自动回复型），不能是变参。其后的参数按位置绑定，支持的类型：
-
-| Go 类型 | 参数类型 |
+| 需求 | 写法 |
 | --- | --- |
-| `string` | 字符串 |
-| `int64` | 整数 |
-| `float64` | 浮点数 |
-| `bool` | 布尔 |
-| `sdk.UserID` | 用户（mention 或 ID） |
-| `*pb.ImageSegment` | 图片 |
-| `*pb.MessageChain` | 消息 |
+| 命令与分组 | `p.Command("hello").Menu().Description("Say hello").Handle(h)`、`p.Group("note").Command("add")` |
+| 文本与原始消息 | `p.Regex(expr)`、`p.Keyword(patterns...)`、`p.StartsWith(...)`、`p.EndsWith(...)`、`p.FullMatch(...)`、`p.Raw()` |
+| 事件 | `p.On(sdk.MessageCreated).Handle(h)`，可接收类型化 payload |
+| Hook | `p.PreEvent(sdk.MessageCreated)`、`p.BeforeSend()`、`p.AfterSend()` |
+| HTTP | `p.Route(http.MethodGet, "/status").HandleFunc(h)`；私有路由要求 Core 管理会话 |
+| 静态任务 | `p.Every("tick", time.Minute).Handle(fn)`、`p.Cron("daily", expr).Timezone(tz).Handle(fn)` |
 
-参数错误时 Core 回复 usage；`UsageKey` 指定 i18n 文案键，`Silent` 不回复。事件 Handler 签名是 `func(*sdk.Context) error`，用 `c.Event()` 读取 `*pb.Event`。
+每个 builder 恰好以 `Handle` 或其等价入口结束一次。文本、事件和 Hook 默认生成 route ID；同类重复或模式会变化时用 `.ID("stable-name")` 固定身份。`Sub` ID 保留逻辑归属，命令路径通过 Group 显式增加前缀。
 
-`Context` 常用方法：`Context()`、`Event()`、`Logger()`、`Match()`、`Has(p)`、`Caller()`、`Send(chain, opts...)`、`StopPropagation()`。
+命令 Handler 首参为 `*sdk.Context`，返回 `error` 或 `(message.Content, error)`。位置参数支持 `string`、`int64`、`int`、`float64`、`bool`、`sdk.UserID`、`*message.ImageSegment`、`message.Chain`、`time.Duration`，具体绑定以 `sdk/arguments.go` 为准。源码参数名由构建工具记录，可用 `.Args(...)` 显式覆盖；`Optional`、`RawTail` 在 builder 上设置。
 
-## 权限
+多个可选参数可改用一个结构体：字段顺序决定位置，`arg:"name"` 指定名字，指针表示可选，`default:"…"` 指定默认值，末字段 `arg:",raw"` 接收尾部。结构体方式独立使用。
 
-`sdk.Anyone`、`sdk.User`、`sdk.Admin`、`sdk.ChatAdmin`、`sdk.PermissionName("adapter.perm")`，用 `p.Or(...)` 取并集。命令与文本匹配取最近一层显式设置（路由、最近的组、外层的组），都没有时要求 `user`；事件路由没有设置时为空集合。Handler 内用 `c.Has(p)` 按当前 Actor 判断。
+`c` 提供 `Text()`、`Event()`、`Match()`、`Has(p)`、`Config()`、`T(...)`、`Reply(...)`、`Send(...)`。命令与文本匹配默认要求 `sdk.User`，可用 `.Permission(sdk.Anyone)` 等显式设置；优先取路由、最近组、外层组的权限。事件默认空权限集合。
 
-## 发送
+## 消息与句柄
 
-- `c.Send(chain)` 发到当前事件的原 Target，无需额外许可。
-- `c.Send(chain, sdk.To(target))` 或后台 `sdk.Send(ctx, target, chain)` 发到其他目标，需要该插件的实例发信许可；无默认目标又没写 To 时返回 NO_DEFAULT_TARGET。
-- 返回的 `*pb.SendResult` 与 error 可能同时存在（部分成功），不要因 error 非空丢掉已确认的消息 ID。
-- 显式 Send 空 Chain 是参数错误；自动回复型返回空 Chain 表示不回复。
-- `sdk/message` 目前提供 `message.Text(s)`；其他片段直接使用 `pb` 类型，以源码为准。
+- 内容用 `sdk/message`：`message.Text`、`ImageURL`、`Mention`、`Quote` 或 `message.Chain`。自动回复返回 `(message.Content, error)`；nil 和空 Chain 表示无回复。
+- `c.Reply(text)` 返回 error；需要回执用 `c.Send(content)`。跨会话用 `c.SendTo(sid, content)`，后台用 `sdk.Send(ctx, sid, content)`；`sdk.Via(instanceID)` 指定实例。
+- 会话字符串格式 `<adapter_id>:<chat_id>[#<thread_id>]`，用 `message.SID` 构造并转义，`ParseSID` 拆解。用户身份用 `message.UID`。
+- 消息句柄格式 `<sid>/<platform_message_id>[@<instance>]`，用回执 `Ref()`、`Refs()` 或 `c.Event().Ref()` 取得；手动构造用 `message.Ref`。编辑用 `c.Edit(ref, content)`，引用用 `message.Quote(ref)`，撤回签名查 `sdk/delete.go`。
+- 错误通过 `errcode.Of(err)` 检查；发送或编辑返回 error 时保留非空回执。入站媒体用 `media.Open(ctx, source)`，其余操作按需查看 `sdk/media/`。
 
-## Service 与 Event Bus
+## Service 与 Bus
 
-- `sdk.JSON[In, Out](r, "name")` 注册 JSON Service；`Access(sdk.AccessPrivate | sdk.AccessAllowlist | sdk.AccessPublic, allowlist...)` 控制调用方；`Tool(description, sdk.ToolAllow | sdk.ToolConfirm)` 把它交给 Agent 作为工具。
-- 调用其他插件：`out, err := sdk.CallJSON[In, Out](ctx, "plugin_id/service", in)`；在 Handler 内调用会关联父请求。
-- 输入不符合 Schema 时调用方收到 INVALID_ARGUMENT 与固定文本 `invalid service input`，Handler 不被调用。
-- 发布：`sdk.Publish[T](ctx, eventName, payload)`，只能发布到本插件命名空间；成功只表示 Core 准入，不保证送达。
-- 订阅回调串行执行，不要阻塞；回调里没有 Actor 与默认 Target，发消息要显式 To。
-- 类型参数必须是包级具名非泛型类型；Schema 版本取类型的 `SchemaVersion() uint32`，没有时为 1。
+类型声明与服务目标绑定，注册和调用共用声明：
 
-## HTTP
+```go
+type Query struct { Name string `json:"name"` }
+type Result struct { Text string `json:"text"` }
 
-`r.Handle(http.MethodGet, "/status", h)` 注册私有路由，`sdk.Public(pb.HttpAuthMode_HTTP_AUTH_MODE_CALLBACK_SIGNATURE)` 等声明公开回调（插件自己验证 state、签名或 nonce）。Core 经 `/plugins/{id}/...` 转发。0.1-beta 的私有路由尚未接入授权，一律 401；本地调试见 AlonaBot `docs/development.md`。
+var lookup = service.JSON[Query, Result]("/lookup")
 
-## 媒体与 Agent 会话
+func register(p *sdk.Plugin) {
+    service.Serve(p, lookup).Access(service.AccessPublic).
+        Handle(func(c *sdk.Context, q Query) (Result, error) {
+            return Result{Text: q.Name}, nil
+        })
+}
+```
 
-- `sdk.Upload(ctx, r, size, mime, sum)` 分块上传，返回 `*pb.MediaRef`。
-- `sdk.ReadMedia(ctx, token, offset, length)` 读取入站媒体；`sdk.GrantMedia(ctx, token, granteePluginID, targets...)` 转授只读 token。
-- Agent 会话：`sdk.AppendConversation`、`sdk.ListConversation`、`sdk.ClearConversation`。
-- 模型能力：`sdk/llm` 以 `@agent` 为目标调用 `llm.generate`，需要管理员把插件加入 `llm_service_allowed_plugins`。
+`/lookup` 在注册时绑定本插件，跨插件调用用完整的 `plugin-id/lookup` 声明后 `.Call(c, input)`。默认 AccessPrivate，另有 AccessAllowlist 和 AccessPublic。Agent 工具在 Handle 前用 `.Tool(description, tool.DefaultAllow/DefaultConfirm)`，需要标注副作用时紧接 `.Effect(...)`；枚举见 `sdk/tool`。
 
-## Manifest 与 ID
+JSON 类型使用包级具名非泛型类型，Schema 由构建工具推导；版本通过 `SchemaVersion() uint32` 声明，默认 1。自有 Protobuf 服务用 `service.Proto`。
 
-- 所有 ID 最长 64 个 ASCII 字符。本地 ID：`^[a-z][a-z0-9_-]{0,63}$`，拒绝 Windows 保留设备名。
-- 市场 ID：`alonabot_plugin_` 前缀，`^alonabot_plugin_[a-z][a-z0-9]*(?:_[a-z0-9]+)*$`；Adapter、Agent、WebUI 依次为 `alonabot_adapter_`、`alonabot_agent_`、`alonabot_webui_`。
-- `plugin_dependencies`：plugin_id、可选 `min_version`（SemVer）与是否必需；`adapter_dependencies`：adapter_id、所需 extension 与版本、是否必需。
+- 流式服务：`service.StreamJSON[In, Delta, Out]`、`service.ServeStream`，调用 `.Call(ctx, in, onDelta)`，Handler 接收 emit 回调。增量与最终结果分别处理。
+- Bus：`bus.Define[T]("plugin-id/event")` 声明，`bus.Subscribe(p, event).Handle(fn)` 订阅，`event.Publish(c, payload)` 发布。Bus 为非持久广播；回调串行执行，发送时显式给出会话。
+
+## 任务与 Agent 扩展
+
+- 动态任务：`task.Define[Args](name)`、`task.On(p, typ).Handle(fn)`，调用 `typ.At/Every/Cron(ctx, ..., args, opts...)`。`task.Key` 指定可替换实例，`typ.Cancel` 取消，`typ.List` 查询。静态任务可用 `task.Pause/Resume/Status` 管理。
+- 模型生成：`llm.Generate`、`llm.GenerateStream` 调用 `@agent` 的 `llm.generate`，需要管理员授予插件访问权。
+- Agent 运行：`agent.Run`、`agent.RunStream`；生命周期扩展使用 `sdk/agent/hook`，持久 goal 使用 `sdk/agent/goal`。选用前读 `docs/agent-api.zh-CN.md` 中对应参数和权限。
+- 会话数据用 `conversation.Append/List/Clear`；平台动作用 `sdk/action`；按钮用 `sdk/button`。从对应分类包读取实际签名。
+
+## Manifest
+
+作者填写 `id`、`name`、SemVer `version`、`source`，按需填 `description`、`author`、`role`、`icon`、依赖与 `prepare_effects`。构建字段由 CLI 补齐。
+
+市场 ID 按角色使用 `alonabot-plugin-`、`alonabot-adapter-`、`alonabot-agent-`、`alonabot-webui-` 前缀，后缀以单连字符分词，最长 64 字符。本地 ID 为 `^[a-z][a-z0-9_-]{0,63}$`。依赖引用实际组件 ID。
+
+可按重启语义恢复且没有独立后台活动的 plugin/agent 可声明 `sleep_capable: true`；需持续运行的组件保持常驻。发布归档用 `alonabot pack` 生成。

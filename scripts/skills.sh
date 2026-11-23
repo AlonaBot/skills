@@ -159,7 +159,12 @@ check_skill() {
 		mismatch=$(grep -E '^> AlonaBot [^ ]+ · 最后更新 [^ ]+$' "$md" | grep -Fxv "$visible" | head -n 1 || true)
 		[ -z "$mismatch" ] || fail "$at $rel: visible line \"$mismatch\" does not match metadata ($got_version · $got_date)"
 		md_dir=$(dirname "$md")
-		for target in $(grep -oE '\]\([^) ]+\)' "$md" | sed -e 's/^](//' -e 's/)$//'); do
+		# 跳过代码块与行内代码，避免把 Go 泛型调用识别为 Markdown 链接。
+		links=$(awk '
+			/^```/ { in_code = !in_code; next }
+			!in_code { gsub(/`[^`]*`/, ""); print }
+		' "$md" | grep -oE '\]\([^) ]+\)' | sed -e 's/^](//' -e 's/)$//' || true)
+		for target in $links; do
 			case "$target" in *://* | \#* | mailto:*) continue ;; esac
 			path=${target%%#*}
 			[ -e "$md_dir/$path" ] || fail "$at $rel: broken link $target"

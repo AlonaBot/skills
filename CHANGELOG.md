@@ -2,6 +2,14 @@
 
 按适用的 AlonaBot 版本分组，组内按日期倒序。
 
+## 0.3.0
+
+### 2026-11-23
+
+- 按 AlonaBot main 更新插件对象入口、构建资源、配置、SDK 消息类型、Service、任务、KV 与测试打包流程。
+- 更新 Adapter 类型、可选接口和独立组件仓库位置，删除旧规格路径及未实现状态。
+- 保留 Codex 与 Claude Code 安装入口，补全 Claude.ai 打包和 Claude API 接入说明。
+
 ## 0.1-beta
 
 ### 2026-11-09
