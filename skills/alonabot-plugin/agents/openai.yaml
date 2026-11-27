@@ -1,6 +1,6 @@
 interface:
   display_name: "AlonaBot 插件开发"
-  short_description: "用 AlonaBot v0.3.0 SDK 开发插件与 Agent 扩展，并完成测试和打包。"
+  short_description: "用 AlonaBot v0.4.0 SDK 开发插件与 Agent 扩展，并完成测试和打包。"
   default_prompt: "使用 $alonabot-plugin 完成这次 AlonaBot 开发任务。"
 policy:
   allow_implicit_invocation: true

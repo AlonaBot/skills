@@ -4,7 +4,7 @@
 
 ## 修改技能
 
-- 内容以 AlonaBot 对应版本的源码为准：`docs/plugin-guide.zh-CN.md`、`docs/development.zh-CN.md`、`docs/agent-api.zh-CN.md`、`sdk/` 的导出 API 与 `contracts/proto/alonabot/v1/`。官方组件实现位于各自独立仓库。写进技能的 API、命令与限额都要在主仓库里核对过，尚未实现的能力明确写「尚未提供」。
+- 内容以 AlonaBot 对应版本的源码为准：[文档站](https://alonabot.github.io/docs/)、`docs/development.zh-CN.md`、`docs/agent-api.zh-CN.md`、`sdk/` 的导出 API 与 `contracts/proto/alonabot/v1/`。官方组件实现位于各自独立仓库。写进技能的 API、命令与限额都要在主仓库里核对过，尚未实现的能力明确写「尚未提供」。
 - 技能、注释与维护文档用简体中文；`README.md` 用英文，`README.zh-CN.md` 用简体中文，内容同步；标识符、命令和程序输出保留英文。`description` 写清触发任务，正文只保留会改变开发决策的信息。
 - frontmatter 只用 Agent Skills 规范的键（`name`、`description`、`license`、`compatibility`、`metadata`、`allowed-tools`），自定义字段放进 `metadata`。为了不依赖 YAML 解析器，每个顶层键的值写在同一行，`metadata` 下每项缩进两个空格且值用双引号。
 - 每个技能必须有 `agents/openai.yaml`，`default_prompt` 提到 `$<技能名>`。

@@ -1,6 +1,6 @@
 interface:
   display_name: "AlonaBot 协议排查"
-  short_description: "排查 AlonaBot v0.3.0 组件的握手、激活、调用错误与部分成功。"
+  short_description: "排查 AlonaBot v0.4.0 组件的握手、激活、调用错误与部分成功。"
   default_prompt: "使用 $alonabot-wire-protocol 完成这次 AlonaBot 开发任务。"
 policy:
   allow_implicit_invocation: true

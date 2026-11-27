@@ -1,6 +1,6 @@
 interface:
   display_name: "AlonaBot Adapter 开发"
-  short_description: "为 AlonaBot v0.3.0 接入聊天平台，处理实例、事件、媒体与平台动作。"
+  short_description: "为 AlonaBot v0.4.0 接入聊天平台，处理实例、事件、媒体与平台动作。"
   default_prompt: "使用 $alonabot-adapter 完成这次 AlonaBot 开发任务。"
 policy:
   allow_implicit_invocation: true

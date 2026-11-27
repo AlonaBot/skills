@@ -1,6 +1,6 @@
 # 配置与存储
 
-> AlonaBot 0.3.0 · 最后更新 2026-11-23
+> AlonaBot 0.4.0 · 最后更新 2026-11-27
 
 ## 配置
 
@@ -31,7 +31,7 @@
 
 secret 仅用于 string/text，省略 default 与 options。Config 返回明文，空串表示未设置；业务数据、日志与错误省略凭证。配置翻译放 `i18n/<locale>.json` 的 `config`，用户回复放 `messages`，至少提供 en-US；`c.T(key, name, value, ...)` 取回复文案。命令英文说明写 `.Description(...)`，其他语言通过顶层 `commands` 按完整命令路径覆盖。
 
-运行时选项源、模板、配置示例图片按需读取主仓库 `docs/plugin-guide.zh-CN.md`「配置与 secret」。修改后运行 `alonabot check`，构建工具自动嵌入资源。
+运行时选项源、模板、配置示例图片按需读取[配置教程](https://alonabot.github.io/docs/tutorial/config)。修改后运行 `alonabot check`，构建工具自动嵌入资源。
 
 ## KV 与 SQLite
 
