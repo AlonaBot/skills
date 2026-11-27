@@ -2,13 +2,13 @@
 
 [English](README.md)
 
-面向 AlonaBot **v0.3.0** 的插件开发、平台接入与协议排查技能，按主仓库 main 核对。共用 Agent Skills 的 `SKILL.md` 格式，提供 OpenAI Codex 元数据与 Anthropic Claude Code 插件市场入口。技能正文使用简体中文。
+面向 AlonaBot **v0.4.0** 的插件开发、平台接入与协议排查技能，按 Core 的 `v0.4.0` tag 核对。共用 Agent Skills 的 `SKILL.md` 格式，提供 OpenAI Codex 元数据与 Anthropic Claude Code 插件市场入口。技能正文使用简体中文。
 
 | 技能 | 用途 | 最后更新 |
 | --- | --- | --- |
-| [alonabot-plugin](skills/alonabot-plugin/SKILL.md) | 插件与 Agent 扩展：命令、消息、Service、任务、配置、存储、测试与打包 | 2026-11-23 |
-| [alonabot-adapter](skills/alonabot-adapter/SKILL.md) | 平台接入：实例、事件、游标、媒体、动作与账号配置页 | 2026-11-23 |
-| [alonabot-wire-protocol](skills/alonabot-wire-protocol/SKILL.md) | 按握手、准备、激活与调用阶段排查会话错误 | 2026-11-23 |
+| [alonabot-plugin](skills/alonabot-plugin/SKILL.md) | 插件与 Agent 扩展：命令、消息、Service、任务、配置、存储、测试与打包 | 2026-11-27 |
+| [alonabot-adapter](skills/alonabot-adapter/SKILL.md) | 平台接入：实例、事件、游标、媒体、动作与账号配置页 | 2026-11-27 |
+| [alonabot-wire-protocol](skills/alonabot-wire-protocol/SKILL.md) | 按握手、准备、激活与调用阶段排查会话错误 | 2026-11-27 |
 
 ## OpenAI Codex
 

@@ -2,13 +2,13 @@
 
 [简体中文](README.zh-CN.md)
 
-Plugin development, platform integration, and protocol troubleshooting skills for AlonaBot **v0.3.0**, checked against the core repository’s main branch. The skills share the Agent Skills `SKILL.md` format and include OpenAI Codex metadata and an Anthropic Claude Code marketplace entry. Skill instructions are written in Simplified Chinese.
+Plugin development, platform integration, and protocol troubleshooting skills for AlonaBot **v0.4.0**, verified against the Core release tag `v0.4.0`. The skills share the Agent Skills `SKILL.md` format and include OpenAI Codex metadata and an Anthropic Claude Code marketplace entry. Skill instructions are written in Simplified Chinese.
 
 | Skill | Purpose | Last updated |
 | --- | --- | --- |
-| [alonabot-plugin](skills/alonabot-plugin/SKILL.md) | Plugins and Agent extensions: commands, messages, services, tasks, configuration, storage, testing, and packaging | 2026-11-23 |
-| [alonabot-adapter](skills/alonabot-adapter/SKILL.md) | Platform integration: instances, events, cursors, media, actions, and account setup pages | 2026-11-23 |
-| [alonabot-wire-protocol](skills/alonabot-wire-protocol/SKILL.md) | Troubleshoot session errors during handshake, preparation, activation, and calls | 2026-11-23 |
+| [alonabot-plugin](skills/alonabot-plugin/SKILL.md) | Plugins and Agent extensions: commands, messages, services, tasks, configuration, storage, testing, and packaging | 2026-11-27 |
+| [alonabot-adapter](skills/alonabot-adapter/SKILL.md) | Platform integration: instances, events, cursors, media, actions, and account setup pages | 2026-11-27 |
+| [alonabot-wire-protocol](skills/alonabot-wire-protocol/SKILL.md) | Troubleshoot session errors during handshake, preparation, activation, and calls | 2026-11-27 |
 
 ## OpenAI Codex
 

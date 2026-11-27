@@ -1,17 +1,17 @@
 ---
 name: alonabot-adapter
-description: 为 AlonaBot v0.3.0 接入聊天平台、修改或排查 Adapter 时使用，涵盖实例、事件与游标、媒体、发送编辑撤回、平台动作和账号配置页面。
-compatibility: AlonaBot 0.3.0；Go 1.27.1+；可读取 AlonaBot 源码或 Go module 缓存。
+description: 为 AlonaBot v0.4.0 接入聊天平台、修改或排查 Adapter 时使用，涵盖实例、事件与游标、媒体、发送编辑撤回、平台动作和账号配置页面。
+compatibility: AlonaBot 0.4.0；Go 1.27.1+；可读取 AlonaBot 源码或 Go module 缓存。
 metadata:
-  alonabot-version: "0.3.0"
-  updated: "2026-11-23"
+  alonabot-version: "0.4.0"
+  updated: "2026-11-27"
 ---
 
 # 开发 AlonaBot Adapter
 
-> AlonaBot 0.3.0 · 最后更新 2026-11-23
+> AlonaBot 0.4.0 · 最后更新 2026-11-27
 
-先读 `sdk/adapter/`、`sdk/message/` 与 `docs/plugin-guide.zh-CN.md`。官方参考实现位于独立仓库 `AlonaBot/alonabot-adapter-telegram`、`AlonaBot/alonabot-adapter-onebot11`；最小本地实现见 Core 的 `examples/devbot/adapter/`。
+先读 `sdk/adapter/`、`sdk/message/` 与 [Adapter 开发指南](https://alonabot.github.io/docs/develop/adapter)。官方参考实现位于独立仓库 `AlonaBot/alonabot-adapter-telegram`、`AlonaBot/alonabot-adapter-onebot11`；最小本地实现见 Core 的 `examples/devbot/adapter/`。
 
 ## 工程与入口
 
@@ -19,7 +19,7 @@ metadata:
 
 入口包导出 `New()` 返回实现 `adapter.Adapter` 的具体类型或接口，独立进程 `main` 调用 `sdk.RunAdapter(New())`。同一包的账号实例由一个进程承载。HTTP 路由在 `adapter.Descriptor.HTTP` 中声明。
 
-| 接口 | v0.3.0 契约 |
+| 接口 | v0.4.0 契约 |
 | --- | --- |
 | `Adapter.Descriptor() *adapter.Descriptor` | 平台能力、扩展、权限、事件、动作与 HTTP 路由 |
 | `Adapter.Start(ctx, adapter.StartRequest, adapter.Core) (adapter.Instance, error)` | 解析配置、验证账号、启动接收后返回 |

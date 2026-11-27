@@ -1,17 +1,17 @@
 ---
 name: alonabot-plugin
-description: 使用 AlonaBot v0.3.0 Go SDK 编写或修改功能插件、Agent 扩展时使用，涵盖命令、消息、Service、任务、配置、存储、测试与打包。平台接入使用 alonabot-adapter。
-compatibility: AlonaBot 0.3.0；Go 1.27.1+；可读取 AlonaBot 源码或 Go module 缓存。
+description: 使用 AlonaBot v0.4.0 Go SDK 编写或修改功能插件、Agent 扩展时使用，涵盖命令、消息、Service、任务、配置、存储、测试与打包。平台接入使用 alonabot-adapter。
+compatibility: AlonaBot 0.4.0；Go 1.27.1+；可读取 AlonaBot 源码或 Go module 缓存。
 metadata:
-  alonabot-version: "0.3.0"
-  updated: "2026-11-23"
+  alonabot-version: "0.4.0"
+  updated: "2026-11-27"
 ---
 
 # 开发 AlonaBot 插件
 
-> AlonaBot 0.3.0 · 最后更新 2026-11-23
+> AlonaBot 0.4.0 · 最后更新 2026-11-27
 
-先读取工程 `go.mod` 的 SDK 版本与 replace 路径，再按需求查看 SDK 源码、`docs/plugin-guide.zh-CN.md` 和 `examples/plugins/`。本技能按 AlonaBot main 的 v0.3.0 代码核对；实际签名以工程使用的 SDK 为准。
+先读取工程 `go.mod` 的 SDK 版本与 replace 路径，再按需求查看 SDK 源码、[插件规范](https://alonabot.github.io/docs/develop/rules)和 `examples/plugins/`。本技能按 Core 的 `v0.4.0` tag 核对；实际签名以工程使用的 SDK 为准。
 
 ## 创建与运行
 
@@ -52,7 +52,7 @@ func main() {
 }
 ```
 
-配套 `i18n/en-US.json`：`{"messages":{"hello":"Hello AlonaBot"}}`。`plugin.yaml` 声明身份，配置放 `plugin_config_schema.json`。构建工具扫描资源并经 overlay 编入程序，直接使用 `alonabot build/check/run/pack`；工程无需生成文件或生成命令。
+配套 `i18n/en-US.json`：`{"messages":{"hello":"Hello AlonaBot"}}`。`plugin.yaml` 声明身份，配置放 `plugin_config_schema.json`。构建工具将声明与翻译经 overlay 编入程序；随包 `assets/` 用 `sdk.PackageDir` 读取。直接使用 `alonabot build/check/run/pack`；工程无需生成文件或生成命令。
 
 ## 按任务读取
 

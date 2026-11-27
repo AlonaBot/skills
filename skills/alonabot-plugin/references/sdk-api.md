@@ -1,6 +1,6 @@
 # SDK 用法
 
-> AlonaBot 0.3.0 · 最后更新 2026-11-23
+> AlonaBot 0.4.0 · 最后更新 2026-11-27
 
 ## 注册与参数
 
@@ -54,6 +54,16 @@ JSON 类型使用包级具名非泛型类型，Schema 由构建工具推导；�
 - 流式服务：`service.StreamJSON[In, Delta, Out]`、`service.ServeStream`，调用 `.Call(ctx, in, onDelta)`，Handler 接收 emit 回调。增量与最终结果分别处理。
 - Bus：`bus.Define[T]("plugin-id/event")` 声明，`bus.Subscribe(p, event).Handle(fn)` 订阅，`event.Publish(c, payload)` 发布。Bus 为非持久广播；回调串行执行，发送时显式给出会话。
 
+生成帮助菜单时，用 `command.List(c)` 列出当前 Actor 在默认 Target 中可用的命令。按 `PluginID` 分组，展示调用语言下的 `PluginName`、`PluginDescription` 和命令 `Description`；根据 `Params` 的 `Name`、`Optional`、`Variadic` 显示用法。
+
+Service Handler 的 `c.User()`、`c.Session()`、`c.ChatType()` 沿用原入站事件的上下文；没有真实入站事件时 `ChatType()` 返回 `message.ChatUnspecified`。
+
+`tool.Confirm(c, operation, summary, effect)` 检查插件自身操作的策略。缺省 `allow` 直接返回 nil；`confirm` 请求聊天用户确认；`deny` 返回 `PERMISSION_DENIED`。注册 Agent 工具时声明的 `tool.DefaultConfirm` 单独生效。
+
+## 组件管理
+
+在活跃 Handler 内使用 `sdk/packages`。Core 只有在原始消息的 Actor 为 Core 管理员时才执行。`packages.List(c)` 按 ID 列出已安装组件。`packages.Install(c, "owner/repo")` 从 GitHub Release 安装组件，视为管理员确认来源信任与同类替换。发生错误时仍须保留函数返回的安装信息与受影响对象。
+
 ## 任务与 Agent 扩展
 
 - 动态任务：`task.Define[Args](name)`、`task.On(p, typ).Handle(fn)`，调用 `typ.At/Every/Cron(ctx, ..., args, opts...)`。`task.Key` 指定可替换实例，`typ.Cancel` 取消，`typ.List` 查询。静态任务可用 `task.Pause/Resume/Status` 管理。
@@ -67,4 +77,4 @@ JSON 类型使用包级具名非泛型类型，Schema 由构建工具推导；�
 
 市场 ID 按角色使用 `alonabot-plugin-`、`alonabot-adapter-`、`alonabot-agent-`、`alonabot-webui-` 前缀，后缀以单连字符分词，最长 64 字符。本地 ID 为 `^[a-z][a-z0-9_-]{0,63}$`。依赖引用实际组件 ID。
 
-可按重启语义恢复且没有独立后台活动的 plugin/agent 可声明 `sleep_capable: true`；需持续运行的组件保持常驻。发布归档用 `alonabot pack` 生成。
+可按重启语义恢复且没有独立后台活动的 plugin/agent 可声明 `sleep_capable: true`；需持续运行的组件保持常驻。发布归档用 `alonabot pack` 生成。插件根目录 `assets/` 原样进入归档；在已就绪的 Handler 或生命周期回调中用 `sdk.PackageDir(ctx)` 找到文件。`alonabot run`、`alonabot test` 与 `plugintest` 使用工程目录；直接使用库模式时为空串，由调用者提供资源路径或备用资源。跨重启的数据写入 `sdk.PluginDataDir(ctx)`。

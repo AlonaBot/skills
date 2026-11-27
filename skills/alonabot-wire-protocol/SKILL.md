@@ -1,15 +1,15 @@
 ---
 name: alonabot-wire-protocol
-description: 排查 AlonaBot v0.3.0 组件与 Core 的握手、SESSION_ERROR、PROTOCOL_ERROR、准备或激活失败、超时取消、部分成功与 stdio 污染时使用。
-compatibility: AlonaBot 0.3.0；传输协议 1.0；可读取 AlonaBot 源码。
+description: 排查 AlonaBot v0.4.0 组件与 Core 的握手、SESSION_ERROR、PROTOCOL_ERROR、准备或激活失败、超时取消、部分成功与 stdio 污染时使用。
+compatibility: AlonaBot 0.4.0；传输协议 1.0；可读取 AlonaBot 源码。
 metadata:
-  alonabot-version: "0.3.0"
-  updated: "2026-11-23"
+  alonabot-version: "0.4.0"
+  updated: "2026-11-27"
 ---
 
 # 排查 AlonaBot Wire 协议
 
-> AlonaBot 0.3.0 · 最后更新 2026-11-23
+> AlonaBot 0.4.0 · 最后更新 2026-11-27
 
 从 Core 日志的 `failed_phase`、`failed_kind`、错误码与 trace 定位阶段，再查 `contracts/proto/alonabot/v1/`、`contracts/validate/`、`internal/wire/` 与 SDK 对应实现。SDK 公共消息类型在 `sdk/message`，可检查错误在 `sdk/errcode`。
 
@@ -17,6 +17,7 @@ metadata:
 
 - 传输协议为 1.0。每帧由 4 字节大端长度与 Protobuf Envelope 组成，Envelope 长度为 1～4,194,304 字节。TCP loopback 与 stdio 使用相同编码。
 - 生命周期：HELLO → HELLO_ACK（Bootstrap）→ REGISTER → PREPARED → ACTIVATE → ACTIVATED → 业务 → STOPPING。失败时 SESSION_ERROR 报告阶段并关闭会话。
+- `Bootstrap.package_dir` 指向独立组件的包目录，开发和测试时为工程目录，直接使用库模式时为空。
 - HELLO_ACK 起使用 Core 分配的 Session ID；REQUEST/RESPONSE/CANCEL 保留原发起方向和 call_id。parent_call_id 只引用同 Session 中仍在途的 Core 请求；子调用继承父期限。
 - OnStart、OnReady 完成后写出 ACTIVATED，SDK 才放行业务调用。HEARTBEAT 用于诊断。
 
@@ -31,10 +32,13 @@ metadata:
 | REGISTER 失败 | builder 是否恰好 Handle 一次，route ID 是否重复，资源是否由 `alonabot build` 编入，注册描述是否超帧限 |
 | PLUGIN_NOT_READY | 调用是否早于 ACTIVATED，或目标组件尚未就绪 |
 | DEADLINE_EXCEEDED / CANCELLED | 原请求剩余期限、父调用、取消传播；保留已完成的业务结果 |
+| `core.package.list` / `core.package.install` 被拒绝 | 核对 `parent_call_id` 仍在途及原始消息 Actor 的 Core 管理员身份；安装失败时检查响应中已有的 `affected` |
 | CALL_CYCLE | Service 调用链是否成环，服务是否按实际需要声明 Reentrant |
 | 运行中 RESOURCE_EXHAUSTED | Session 在途请求与载荷预算、阻塞的 Bus 回调 |
 | NO_DEFAULT_TARGET | 后台、Bus 或任务中显式提供会话字符串 |
 | HTTP 返回 401 | 管理会话或凭证；公开回调由插件校验其声明的签名或 state |
+
+Service 调用的 `InvocationContext.chat_type` 由 Core 从真实入站事件继承，和用户及会话一起传给下游。
 
 错误码 1～17 的定义见 `contracts/proto/alonabot/v1/errors.proto`，业务代码通过 `errcode.Of(err)` 检查包装后的错误。RESPONSE 可同时包含 payload 和 ErrorInfo；先保留回执及已确认消息，再处理错误。
 
